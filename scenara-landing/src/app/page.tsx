@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import HeroAgentNetwork from "@/components/HeroAgentNetwork";
-import SimulationPreview from "@/components/SimulationPreview";
-import ProblemSolutionVisual from "@/components/ProblemSolutionVisual";
-import HowItWorksAndDifferentiators from "@/components/HowItWorksAndDifferentiators";
-import UseCasesSection from "@/components/UseCasesSection";
-import WaitlistForm from "@/components/WaitlistForm";
+import HeroAgentNetwork from "../components/HeroAgentNetwork";
+import SimulationPreview from "../components/SimulationPreview";
+import ProblemSolutionVisual from "../components/ProblemSolutionVisual";
+import HowItWorksAndDifferentiators from "../components/HowItWorksAndDifferentiators";
+import UseCasesSection from "../components/UseCasesSection";
+import WaitlistForm from "../components/WaitlistForm";
 import {
   ArrowRight,
   Play,
