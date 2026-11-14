@@ -1,0 +1,177 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  name          String
+  passwordHash  String
+  apiKey        String?      @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  simulations   Simulation[]
+}
+
+model Simulation {
+  id              String               @id @default(uuid())
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  scenarioPrompt  String
+  domain          String
+  agentCount      Int                  @default(30)
+  totalRounds     Int                  @default(5)
+  currentRound    Int                  @default(0)
+  status          String               @default("DRAFT") // DRAFT, GENERATING_NETWORK, READY, RUNNING, PAUSED, COMPLETED, FAILED
+  parameters      String               @default("{\"volatility\":0.35,\"clusteringCoefficient\":0.6,\"polarizationThreshold\":0.5}") // JSON string
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  agents          Agent[]
+  relationships   AgentRelationship[]
+  rounds          SimulationRound[]
+  interactions    Interaction[]
+  snapshots       AgentSnapshot[]
+  result          SimulationResult?
+  workerJob       WorkerJob?
+
+  @@index([userId])
+}
+
+model Agent {
+  id                 String              @id @default(uuid())
+  simulationId       String
+  simulation         Simulation          @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  name               String
+  avatarSeed         String
+  role               String
+  archetype          String
+  demographics       String              // JSON string: { age, location, education, occupation, incomeBracket }
+  psychometrics      String              // JSON string: { openness, conscientiousness, extraversion, agreeableness, neuroticism, riskTolerance }
+  baselineSentiment  Float               // -1.0 to 1.0
+  currentSentiment   Float               // -1.0 to 1.0
+  currentStance      String
+  stubbornness       Float               @default(0.50) // 0.0 to 1.0
+  influenceScore     Float               @default(0.50) // 0.0 to 1.0
+  createdAt          DateTime            @default(now())
+
+  outgoingRelations  AgentRelationship[] @relation("SourceAgent")
+  incomingRelations  AgentRelationship[] @relation("TargetAgent")
+  sentInteractions   Interaction[]       @relation("SenderAgent")
+  receivedInteractions Interaction[]     @relation("RecipientAgent")
+  snapshots          AgentSnapshot[]
+
+  @@index([simulationId])
+}
+
+model AgentRelationship {
+  id               String      @id @default(uuid())
+  simulationId     String
+  simulation       Simulation  @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  sourceAgentId    String
+  sourceAgent      Agent       @relation("SourceAgent", fields: [sourceAgentId], references: [id], onDelete: Cascade)
+  targetAgentId    String
+  targetAgent      Agent       @relation("TargetAgent", fields: [targetAgentId], references: [id], onDelete: Cascade)
+  relationshipType String      @default("PEER") // PEER, ADVERSARY, INFLUENCER_FOLLOWER, COLLEAGUE, ACQUAINTANCE
+  weight           Float       @default(0.50)   // 0.0 to 1.0
+  trustScore       Float       @default(0.50)   // 0.0 to 1.0
+  createdAt        DateTime    @default(now())
+
+  @@unique([simulationId, sourceAgentId, targetAgentId])
+  @@index([simulationId])
+  @@index([sourceAgentId, targetAgentId])
+}
+
+model SimulationRound {
+  id             String          @id @default(uuid())
+  simulationId   String
+  simulation     Simulation      @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  roundNumber    Int
+  injectedEvent  String?         // Populated if mid-flight "God Mode" intervention occurred
+  status         String          @default("PENDING") // PENDING, RUNNING, COMPLETED
+  startedAt      DateTime        @default(now())
+  completedAt    DateTime?
+
+  interactions   Interaction[]
+  snapshots      AgentSnapshot[]
+
+  @@unique([simulationId, roundNumber])
+  @@index([simulationId])
+}
+
+model Interaction {
+  id                     String           @id @default(uuid())
+  simulationId           String
+  simulation             Simulation       @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  roundId                String
+  round                  SimulationRound  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  senderId               String
+  sender                 Agent            @relation("SenderAgent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId            String?
+  recipient              Agent?           @relation("RecipientAgent", fields: [recipientId], references: [id], onDelete: Cascade)
+  interactionType        String           // DYADIC_CONVERSATION, PUBLIC_BROADCAST, INTERNAL_DELIBERATION
+  content                String
+  decisionRationale      String           // Concise 1-2 sentence explanation of why this stance was taken
+  senderSentimentDelta   Float            @default(0.0)
+  recipientSentimentDelta Float           @default(0.0)
+  createdAt              DateTime         @default(now())
+
+  @@index([simulationId])
+  @@index([roundId])
+  @@index([senderId])
+}
+
+model AgentSnapshot {
+  id                 String           @id @default(uuid())
+  simulationId       String
+  simulation         Simulation       @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  roundId            String
+  round              SimulationRound  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  agentId            String
+  agent              Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  sentimentScore     Float
+  opinionSummary     String
+  decisionRationale  String           // Concise explanation for current belief state
+  stateMetrics       String           @default("{}") // JSON string: { interactionsCount, timesPersuaded, currentInfluence }
+  createdAt          DateTime         @default(now())
+
+  @@unique([roundId, agentId])
+  @@index([simulationId])
+  @@index([agentId])
+  @@index([roundId])
+}
+
+model SimulationResult {
+  id                        String      @id @default(uuid())
+  simulationId              String      @unique
+  simulation                Simulation  @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  executiveSummary          String
+  sentimentBreakdown        String      // JSON string: { initialAvg, finalAvg, positivePct, neutralPct, negativePct }
+  keyFrictionPoints         String      // JSON string: array of { topic, severity, quotes, agentCount }
+  unexpectedFindings        String      // JSON string: array of { insight, explanation, emergentGroup }
+  strategicRecommendations  String      // JSON string: array of { action, expectedImpact, targetArchetype }
+  createdAt                 DateTime    @default(now())
+}
+
+model WorkerJob {
+  id            String     @id @default(uuid())
+  simulationId  String     @unique
+  simulation    Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  status        String     @default("QUEUED") // QUEUED, RUNNING, COMPLETED, FAILED
+  attempts      Int        @default(0)
+  maxAttempts   Int        @default(3)
+  lastError     String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([status])
+}
+
