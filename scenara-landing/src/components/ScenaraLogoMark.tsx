@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 
 interface ScenaraLogoMarkProps {
   className?: string;
@@ -8,31 +8,20 @@ interface ScenaraLogoMarkProps {
 }
 
 export default function ScenaraLogoMark({ className = "w-7 h-7", size = 28 }: ScenaraLogoMarkProps) {
-  const [imgError, setImgError] = useState(false);
-
-  if (!imgError) {
-    return (
-      <img
-        src="/scenara-mark.png"
-        alt="Scenara"
-        width={size}
-        height={size}
-        className={`${className} object-contain`}
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-
-  // Pure SVG Fallback representing the Scenara infinity loop
+  // Pure vector SVG representing the Scenara infinity loop - works 100% reliably in all environments with zero broken images
   return (
     <svg
+      width={size}
+      height={size}
       viewBox="0 0 100 60"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
+      className={`${className} object-contain`}
+      aria-label="Scenara"
+      role="img"
     >
       <defs>
-        <linearGradient id="scenaraGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="scenaraGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#00E599" />
           <stop offset="100%" stopColor="#00B370" />
         </linearGradient>
@@ -40,7 +29,7 @@ export default function ScenaraLogoMark({ className = "w-7 h-7", size = 28 }: Sc
       {/* Mint green loop */}
       <path
         d="M 32 10 C 18 10 8 20 8 32 C 8 44 18 52 30 52 C 42 52 50 42 62 26 C 70 16 80 10 90 18 C 96 23 96 32 90 38 C 82 46 72 48 64 42"
-        stroke="url(#scenaraGreen)"
+        stroke="url(#scenaraGreenGrad)"
         strokeWidth="12"
         strokeLinecap="round"
       />
