@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm --prefix scenara-landing run dev",
+    "build": "npm --prefix scenara-landing run build",
+    "start": "npm --prefix scenara-landing run start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
